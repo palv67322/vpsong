@@ -1,3 +1,4 @@
+/* General Styling */
 body, html {
     height: 100%;
     margin: 0;
@@ -139,4 +140,69 @@ select:hover {
 
 audio {
     display: none;
+}
+
+/* Media Queries for Mobile Responsiveness */
+
+@media (max-width: 768px) {
+    #loading-container {
+        width: 95%;
+        padding: 15px;
+    }
+
+    h2 {
+        font-size: 1.5em;
+    }
+
+    button {
+        margin: 10px 5px;
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+
+    #visualizer {
+        height: 100px;
+    }
+
+    #progress {
+        height: 20px;
+        line-height: 20px;
+    }
+
+    #percentage, #duration, #countdown {
+        font-size: 16px;
+    }
+
+    select {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    h2 {
+        font-size: 1.3em;
+    }
+
+    button {
+        margin: 8px 4px;
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    #visualizer {
+        height: 80px;
+    }
+
+    #progress {
+        height: 18px;
+        line-height: 18px;
+    }
+
+    #percentage, #duration, #countdown {
+        font-size: 14px;
+    }
+
+    select {
+        font-size: 12px;
+    }
 }
