@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Audio Player</title>
+    <link rel="stylesheet" href="index.css">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #282c34;
+            color: white;
+            transition: background-color 0.5s ease;
+        }
+
+        #loading-container {
+            width: 80%;
+            text-align: center;
+        }
+
+        #loading-bar {
+            width: 100%;
+            background-color: #f3f3f3;
+            border-radius: 25px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            cursor: pointer; /* Change cursor to indicate interactivity */
+        }
+
+        #progress {
+            height: 30px;
+            width: 0;
+            background-color: #4CAF50;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+            border-radius: 25px;
+        }
+
+        #percentage, #duration, #countdown {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        #visualizer {
+            width: 100%;
+            height: 100px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .bar {
+            background-color: #4CAF50;
+            flex: 1;
+            margin: 0 1px;
+            height: 100%;
+            transition: height 0.1s;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-container">
+        <h2>Loading Page with Audio</h2>
+        <div id="loading-bar" onclick="setAudioProgress(event)">
+            <div id="progress"></div>
+        </div>
+        <div id="percentage">0%</div>
+        <div id="duration">0:00 / 0:00</div>
+        <div id="countdown">Time Left: 0:00</div>
+        <div id="visualizer"></div>
+
+        <label for="audio-select">Select Audio Track:</label>
+        <select id="audio-select">
+            <option value="" disabled selected>Select a song</option> <!-- Placeholder option -->
+        </select>
+
+        <div>
+            <button id="prev-btn">← Previous</button>
+            <button id="play-btn" disabled>Play</button> <!-- Initially disabled -->
+            <button id="next-btn">Next →</button>
+        </div>
+
+        <button id="mute-btn">Mute</button>
+        <label for="volume">Volume:</label>
+        <input type="range" id="volume" min="0" max="1" step="0.1" value="1">
+        <label>
+            <input type="checkbox" id="loop-checkbox"> Loop
+        </label>
+
+        <div id="share-container">
+            <button id="share-btn">Share</button>
+        </div>
+    </div>
+
+    <audio id="audio"></audio>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const progress = document.getElementById("progress");
+            const percentageText = document.getElementById("percentage");
+            const audio = document.getElementById("audio");
+            const playButton = document.getElementById("play-btn");
+            const muteButton = document.getElementById("mute-btn");
+            const durationText = document.getElementById("duration");
+            const countdownText = document.getElementById("countdown");
+            const volumeControl = document.getElementById("volume");
+            const audioSelect = document.getElementById("audio-select");
+            const visualizer = document.getElementById("visualizer");
+            const prevButton = document.getElementById("prev-btn");
+            const nextButton = document.getElementById("next-btn");
+            const loopCheckbox = document.getElementById("loop-checkbox");
+
+            let songs = []; // To store the song list
+            let currentIndex = -1; // Track the current song index
+
+            // Create visualizer bars
+            for (let i = 0; i < 20; i++) {
+                let bar = document.createElement("div");
+                bar.className = "bar";
+                visualizer.appendChild(bar);
+            }
+
+            // Fetch songs from the backend
+            fetch('http://localhost:3000/api/songs')
+                .then(response => response.json())
+                .then(data => {
+                    songs = data; // Store the songs in the array
+                    songs.forEach((song, index) => {
+                        let option = document.createElement("option");
+                        option.value = `http://localhost:3000${song.filePath}`; // Set value to the full file path
+                        option.textContent = song.title; // Set option text
+                        audioSelect.appendChild(option);
+                    });
+                });
+
+            // Disable play button initially
+            playButton.disabled = true;
+
+            // Change audio track
+            audioSelect.addEventListener("change", function() {
+                currentIndex = audioSelect.selectedIndex - 1; // Set currentIndex based on selection
+                audio.src = audioSelect.value;
+                playButton.disabled = false; // Enable play button when a song is selected
+                audio.play();
+                playButton.textContent = "Pause";
+            });
+
+            // Play audio on button click
+            playButton.addEventListener("click", function() {
+                if (audio.paused) {
+                    audio.play();
+                    playButton.textContent = "Pause";
+                } else {
+                    audio.pause();
+                    playButton.textContent = "Play";
+                }
+            });
+
+            // Mute/Unmute functionality
+            muteButton.addEventListener("click", function() {
+                audio.muted = !audio.muted;
+                muteButton.textContent = audio.muted ? "Unmute" : "Mute";
+            });
+
+            // Volume Control Functionality
+            volumeControl.addEventListener("input", function() {
+                audio.volume = volumeControl.value;
+            });
+
+            // Update loading bar, duration, and countdown
+            audio.addEventListener("timeupdate", function () {
+                let currentTime = audio.currentTime;
+                let duration = audio.duration;
+
+                // Calculate loading percentage
+                let percentage = Math.floor((currentTime / duration) * 100);
+                progress.style.width = percentage + "%";
+                percentageText.textContent = percentage + "%";
+
+                // Update duration display
+                let currentMinutes = Math.floor(currentTime / 60);
+                let currentSeconds = Math.floor(currentTime % 60).toString().padStart(2, '0');
+                durationText.textContent = `${currentMinutes}:${currentSeconds} / ${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().padStart(2, '0')}`;
+
+                // Update countdown
+                let remainingTime = duration - currentTime;
+                let remainingMinutes = Math.floor(remainingTime / 60);
+                let remainingSeconds = Math.floor(remainingTime % 60).toString().padStart(2, '0');
+                countdownText.textContent = `Time Left: ${remainingMinutes}:${remainingSeconds}`;
+
+                // Visualizer effect
+                let bars = document.querySelectorAll('.bar');
+                bars.forEach((bar) => {
+                    let height = Math.random() * (percentage / 100) * 100;
+                    bar.style.height = `${height}%`;
+                });
+
+                // Change background color based on percentage
+                document.body.style.backgroundColor = `rgb(${percentage * 2.55}, ${255 - percentage * 2.55}, 150)`;
+
+                // Reset if audio ends
+                if (percentage >= 100) {
+                    progress.style.width = "100%";
+                    percentageText.textContent = "100%";
+                    playNextSong(); // Automatically play the next song
+                }
+            });
+
+            // Show total duration on audio metadata load
+            audio.addEventListener("loadedmetadata", function() {
+                let totalMinutes = Math.floor(audio.duration / 60);
+                let totalSeconds = Math.floor(audio.duration % 60).toString().padStart(2, '0');
+                durationText.textContent = `0:00 / ${totalMinutes}:${totalSeconds}`;
+            });
+
+            // Play next song function
+            function playNextSong() {
+                if (loopCheckbox.checked) {
+                    audio.currentTime = 0; // Reset the current song
+                    audio.play();
+                    playButton.textContent = "Pause";
+                } else {
+                    currentIndex++;
+                    if (currentIndex >= songs.length) {
+                        currentIndex = 0; // Loop back to the first song
+                    }
+                    audio.src = `http://localhost:3000${songs[currentIndex].filePath}`; // Set the new song
+                    audio.play();
+                    playButton.textContent = "Pause";
+                    audioSelect.selectedIndex = currentIndex + 1; // Update dropdown selection
+                }
+            }
+
+            // Play previous song function
+            prevButton.addEventListener("click", function() {
+                currentIndex--;
+                if (currentIndex < 0) {
+                    currentIndex = songs.length - 1; // Loop to the last song
+                }
+                audio.src = `http://localhost:3000${songs[currentIndex].filePath}`; // Set the new song
+                audio.play();
+                playButton.textContent = "Pause";
+                audioSelect.selectedIndex = currentIndex + 1; // Update dropdown selection
+            });
+
+            // Play next song on button click
+            nextButton.addEventListener("click", playNextSong);
+
+            // Share functionality
+            document.getElementById("share-btn").addEventListener("click", function() {
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Check out this awesome audio!',
+                        text: 'I found this great audio track!',
+                        url: window.location.href,
+                    })
+                    .then(() => console.log('Share successful'))
+                    .catch((error) => console.log('Error sharing:', error));
+                } else {
+                    alert("Share not supported on this browser.");
+                }
+            });
+        });
+
+        // Function to set audio progress on click
+        function setAudioProgress(event) {
+            const loadingBar = document.getElementById("loading-bar");
+            const totalWidth = loadingBar.clientWidth;
+            const offsetX = event.offsetX; // Get the click position relative to the loading bar
+            const percentage = offsetX / totalWidth; // Calculate percentage
+            const audio = document.getElementById("audio");
+            audio.currentTime = percentage * audio.duration; // Set audio current time
+        }
+    </script>
+
+</body>
+</html>
